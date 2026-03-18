@@ -13,7 +13,10 @@ const io = new Server(server, {
   },
 });
 
-
+/**
+ * @Server Side Socket Events -> socket.emit() -> socket.on()
+ * @Client Side Socket Events -> socket.on() <- socket.emit()
+ */
 
 io.on("connection", (socket) => {
   const username = socket.handshake.auth.username || "Anonymous";
