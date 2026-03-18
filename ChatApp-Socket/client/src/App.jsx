@@ -13,9 +13,18 @@ import {
 } from "@mui/material";
 
 const App = () => {
+  const [username, setUsername] = useState("");
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [inputName, setInputName] = useState("");
+
   const socket = useMemo(
-    () => io("http://localhost:3000", { withCredentials: true }),
-    [],
+    () =>
+      io("http://localhost:3000", {
+        withCredentials: true,
+        auth: { username },
+        autoConnect: false,
+      }),
+    [username],
   );
 
   const [messages, setMessages] = useState([]);
@@ -24,6 +33,13 @@ const App = () => {
   const [roomName, setRoomName] = useState("");
   const [currentRoom, setCurrentRoom] = useState("");
   const messagesEndRef = useRef(null);
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    if (!inputName.trim()) return;
+    setUsername(inputName.trim());
+    setLoggedIn(true);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -40,18 +56,44 @@ const App = () => {
   };
 
   useEffect(() => {
+    if (!loggedIn) return;
+    socket.connect();
     socket.on("connect", () => setSocketId(socket.id));
-    socket.on("receive-message", ({ message, senderId }) =>
-      setMessages((prev) => [...prev, { message, senderId }])
+    socket.on("receive-message", ({ message, senderId, username: senderName }) =>
+      setMessages((prev) => [...prev, { message, senderId, username: senderName }])
     );
     socket.on("welcome", (s) => console.log(s));
     socket.on("room-joined", (room) => setCurrentRoom(room));
     return () => socket.disconnect();
-  }, []);
+  }, [loggedIn]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  if (!loggedIn) {
+    return (
+      <Box sx={{ minHeight: "100vh", bgcolor: "#f0f2f5", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Container maxWidth="xs">
+          <Paper elevation={3} sx={{ p: 4, borderRadius: 3 }}>
+            <Typography variant="h6" fontWeight={700} mb={3} textAlign="center">💬 Chat App</Typography>
+            <Box component="form" onSubmit={handleLogin}>
+              <Stack spacing={2}>
+                <TextField
+                  fullWidth
+                  label="Enter your username"
+                  value={inputName}
+                  onChange={(e) => setInputName(e.target.value)}
+                  autoFocus
+                />
+                <Button type="submit" variant="contained" fullWidth>Join Chat</Button>
+              </Stack>
+            </Box>
+          </Paper>
+        </Container>
+      </Box>
+    );
+  }
 
   return (
     <Box
@@ -81,6 +123,7 @@ const App = () => {
             <Typography variant="h6" fontWeight={700}>
               💬 Chat App
             </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.8 }}>{username}</Typography>
             {socketID && (
               <Chip
                 label={`ID: ${socketID.slice(0, 8)}...`}
@@ -166,7 +209,7 @@ const App = () => {
                       >
                         {!isOwn && (
                           <Typography variant="caption" sx={{ opacity: 0.6, display: "block" }}>
-                            {m.senderId.slice(0, 6)}
+                            {m.username || m.senderId.slice(0, 6)}
                           </Typography>
                         )}
                         <Typography variant="body2">{m.message}</Typography>

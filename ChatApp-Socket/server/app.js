@@ -16,10 +16,11 @@ const io = new Server(server, {
 
 
 io.on("connection", (socket) => {
-  socket.emit("welcome", `Welcome! Your socket ID is ${socket.id}`);
+  const username = socket.handshake.auth.username || "Anonymous";
+  socket.emit("welcome", `Welcome ${username}! Your socket ID is ${socket.id}`);
 
   socket.on("message", ({ room, message }) => {
-    const payload = { message, senderId: socket.id };
+    const payload = { message, senderId: socket.id, username };
     if (room) {
       io.to(room).emit("receive-message", payload);
     } else {
