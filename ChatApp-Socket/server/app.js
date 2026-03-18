@@ -6,17 +6,37 @@ const app = express();
 const port = 3000;
 
 const server = createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:5173",
+    credentials: true,
+  },
+});
+
+
 
 io.on("connection", (socket) => {
-  console.log("user connected");
-  console.log(`id: ${socket.id}}`);
+  socket.emit("welcome", `Welcome! Your socket ID is ${socket.id}`);
+
+  socket.on("message", ({ room, message }) => {
+    const payload = { message, senderId: socket.id };
+    if (room) {
+      io.to(room).emit("receive-message", payload);
+    } else {
+      io.emit("receive-message", payload);
+    }
+  });
+
+  socket.on("join-room", (room) => {
+    socket.join(room);
+    socket.emit("room-joined", room);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User Disconnected", socket.id);
+  });
 });
 
-app.get("/", (req, res) => {
-  res.send("Chat App");
-});
-
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`server is running on port ${port}`);
 });
